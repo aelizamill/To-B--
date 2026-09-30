@@ -14,7 +14,6 @@ from datetime import date
 from pathlib import Path
 
 import streamlit as st
-import streamlit.components.v1 as components
 
 import db
 import metadata
@@ -27,31 +26,22 @@ def set_home_screen_icon(icon_path: Path) -> None:
     """Make 'Add to Home Screen' on iOS/Android use icon.png as the app icon.
 
     Safari only picks this up if an <apple-touch-icon> link tag exists in
-    the page <head>. Streamlit renders inside an iframe, so a normal
-    st.markdown(unsafe_allow_html=True) can't reach the real page head --
-    this reaches through to the parent document with a tiny script instead.
-    Otherwise iOS just uses a screenshot of whatever's on screen.
+    the page. This is injected with a plain st.markdown(unsafe_allow_html)
+    call rather than components.html, because components.html renders
+    inside a sandboxed iframe that can be blocked from reaching the real
+    page at all on some hosts -- st.markdown renders directly into the
+    app's own page, so there's no cross-frame boundary to cross.
 
     (The browser TAB icon doesn't need this trick -- st.set_page_config's
-    page_icon parameter handles that natively, below.)
+    page_icon parameter handles that natively, above.)
     """
     if not icon_path.exists():
         return
     encoded = base64.b64encode(icon_path.read_bytes()).decode()
     data_uri = f"data:image/png;base64,{encoded}"
-    components.html(
-        f"""
-        <script>
-          const doc = window.parent.document;
-          doc.querySelectorAll("link[rel~='apple-touch-icon']")
-             .forEach(el => el.remove());
-          const link = doc.createElement('link');
-          link.rel = 'apple-touch-icon';
-          link.href = '{data_uri}';
-          doc.head.appendChild(link);
-        </script>
-        """,
-        height=0,
+    st.markdown(
+        f'<link rel="apple-touch-icon" href="{data_uri}">',
+        unsafe_allow_html=True,
     )
 
 
