@@ -8,15 +8,53 @@ the author, and a summary in an expander that starts collapsed.
 
 from __future__ import annotations
 
+import base64
 import json
 from datetime import date
+from pathlib import Path
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 import db
 import metadata
 
 PLACEHOLDER_COVER = "https://placehold.co/128x193?text=No+cover"
+ICON_PATH = Path(__file__).parent / "icon.png"
+
+
+def set_home_screen_icon(icon_path: Path) -> None:
+    """Make 'Add to Home Screen' on iOS/Android use icon.png as the app icon.
+
+    Safari only picks this up if an <apple-touch-icon> link tag exists in
+    the page <head>. Streamlit renders inside an iframe, so a normal
+    st.markdown(unsafe_allow_html=True) can't reach the real page head --
+    this reaches through to the parent document with a tiny script instead.
+    Otherwise iOS just uses a screenshot of whatever's on screen.
+    """
+    if not icon_path.exists():
+        return
+    encoded = base64.b64encode(icon_path.read_bytes()).decode()
+    data_uri = f"data:image/png;base64,{encoded}"
+    components.html(
+        f"""
+        <script>
+          const doc = window.parent.document;
+          doc.querySelectorAll("link[rel~='icon'], link[rel~='apple-touch-icon']")
+             .forEach(el => el.remove());
+          const link = doc.createElement('link');
+          link.rel = 'apple-touch-icon';
+          link.href = '{data_uri}';
+          doc.head.appendChild(link);
+          const favicon = doc.createElement('link');
+          favicon.rel = 'icon';
+          favicon.href = '{data_uri}';
+          doc.head.appendChild(favicon);
+        </script>
+        """,
+        height=0,
+    )
+
 
 
 # --------------------------------------------------------------------------
@@ -24,6 +62,7 @@ PLACEHOLDER_COVER = "https://placehold.co/128x193?text=No+cover"
 # --------------------------------------------------------------------------
 
 st.set_page_config(page_title="To B--", page_icon="📚", layout="centered")
+set_home_screen_icon(ICON_PATH)
 
 
 @st.cache_resource
