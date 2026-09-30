@@ -31,6 +31,9 @@ def set_home_screen_icon(icon_path: Path) -> None:
     st.markdown(unsafe_allow_html=True) can't reach the real page head --
     this reaches through to the parent document with a tiny script instead.
     Otherwise iOS just uses a screenshot of whatever's on screen.
+
+    (The browser TAB icon doesn't need this trick -- st.set_page_config's
+    page_icon parameter handles that natively, below.)
     """
     if not icon_path.exists():
         return
@@ -40,16 +43,12 @@ def set_home_screen_icon(icon_path: Path) -> None:
         f"""
         <script>
           const doc = window.parent.document;
-          doc.querySelectorAll("link[rel~='icon'], link[rel~='apple-touch-icon']")
+          doc.querySelectorAll("link[rel~='apple-touch-icon']")
              .forEach(el => el.remove());
           const link = doc.createElement('link');
           link.rel = 'apple-touch-icon';
           link.href = '{data_uri}';
           doc.head.appendChild(link);
-          const favicon = doc.createElement('link');
-          favicon.rel = 'icon';
-          favicon.href = '{data_uri}';
-          doc.head.appendChild(favicon);
         </script>
         """,
         height=0,
@@ -61,7 +60,11 @@ def set_home_screen_icon(icon_path: Path) -> None:
 # setup
 # --------------------------------------------------------------------------
 
-st.set_page_config(page_title="To B--", page_icon="📚", layout="centered")
+st.set_page_config(
+    page_title="To B--",
+    page_icon=str(ICON_PATH) if ICON_PATH.exists() else "📚",
+    layout="centered",
+)
 set_home_screen_icon(ICON_PATH)
 
 
